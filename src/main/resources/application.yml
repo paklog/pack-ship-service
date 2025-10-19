@@ -1,0 +1,108 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: pack-ship-service
+
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/pack_ship}
+      database: pack_ship
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: pack-ship-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+  # Spring MVC Configuration
+  mvc:
+    contentnegotiation:
+      favor-parameter: false
+      favor-path-extension: false
+      media-types:
+        json: application/json
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.paklog.wes.pack: DEBUG
+    org.springframework.kafka: WARN
+    org.mongodb.driver: WARN
+
+# Application-specific Configuration
+pack:
+  quality:
+    strict-mode: true
+    sampling-rate: 0.1
+  weight-verification:
+    tolerance-percentage: 5.0
+  cartonization:
+    service-url: ${CARTONIZATION_SERVICE_URL:http://localhost:8090}
+
+# CloudEvents Configuration
+cloudevents:
+  kafka:
+    topic: wes-pack-events
+    source: /wes/pack-ship-service
+
+# PakLog Configuration
+paklog:
+  kafka:
+    topics:
+      pick-events: wes-pick-events
+      pack-events: wes-pack-events
+      ship-events: wes-ship-events
+    consumer:
+      group-id: pack-ship-service
+
+# Actuator Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - metrics
+          - prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  health:
+    mongo:
+      enabled: true
+    kafka:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: dev
+      service-type: wes
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+# OpenAPI Documentation Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
