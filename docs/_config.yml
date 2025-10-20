@@ -1,0 +1,38 @@
+title: Pack & Ship Service Documentation
+description: Order packing and shipping preparation service
+theme: jekyll-theme-cayman
+baseurl: "/pack-ship-service"
+url: "https://paklog.github.io"
+
+# Navigation
+navigation:
+  - title: Home
+    url: /
+  - title: Architecture
+    url: /architecture
+  - title: Domain Model
+    url: /DOMAIN-MODEL
+  - title: Sequence Diagrams
+    url: /SEQUENCE-DIAGRAMS
+  - title: API Documentation
+    url: /openapi
+
+# GitHub
+github:
+  repository_url: https://github.com/paklog/pack-ship-service
+
+# Build settings
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: false
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor

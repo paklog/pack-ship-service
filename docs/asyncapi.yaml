@@ -1,0 +1,731 @@
+asyncapi: 2.6.0
+info:
+  title: Pack and Ship Service Events
+  version: 1.0.0
+  description: |
+    Event-driven API for Pack and Ship Service using Apache Kafka.
+    This service publishes and subscribes to events related to packing operations,
+    quality control, shipment creation, and label generation.
+  contact:
+    name: WES Team
+    email: wes-team@paklog.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  development:
+    url: localhost:9092
+    protocol: kafka
+    description: Local Kafka broker
+  production:
+    url: kafka-cluster.paklog.com:9092
+    protocol: kafka
+    description: Production Kafka cluster
+
+defaultContentType: application/json
+
+channels:
+  packing.session.started:
+    description: Published when a packing session starts
+    publish:
+      operationId: publishPackingSessionStarted
+      summary: Packing session started event
+      message:
+        $ref: '#/components/messages/PackingSessionStarted'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.item.scanned:
+    description: Published when an item is scanned
+    publish:
+      operationId: publishItemScanned
+      summary: Item scanned event
+      message:
+        $ref: '#/components/messages/ItemScanned'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.carton.selected:
+    description: Published when a carton is selected
+    publish:
+      operationId: publishCartonSelected
+      summary: Carton selected event
+      message:
+        $ref: '#/components/messages/CartonSelected'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.weight.verified:
+    description: Published when package weight is verified
+    publish:
+      operationId: publishWeightVerified
+      summary: Weight verified event
+      message:
+        $ref: '#/components/messages/WeightVerified'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.quality.check.completed:
+    description: Published when quality check is completed
+    publish:
+      operationId: publishQualityCheckCompleted
+      summary: Quality check completed event
+      message:
+        $ref: '#/components/messages/QualityCheckCompleted'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.session.completed:
+    description: Published when packing session is completed
+    publish:
+      operationId: publishPackingSessionCompleted
+      summary: Packing session completed event
+      message:
+        $ref: '#/components/messages/PackingSessionCompleted'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  packing.session.failed:
+    description: Published when packing session fails quality check
+    publish:
+      operationId: publishPackingSessionFailed
+      summary: Packing session failed event
+      message:
+        $ref: '#/components/messages/PackingSessionFailed'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Session ID
+
+  shipment.created:
+    description: Published when a shipment is created
+    publish:
+      operationId: publishShipmentCreated
+      summary: Shipment created event
+      message:
+        $ref: '#/components/messages/ShipmentCreated'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Shipment ID
+
+  shipment.label.generated:
+    description: Published when shipping label is generated
+    publish:
+      operationId: publishShippingLabelGenerated
+      summary: Shipping label generated event
+      message:
+        $ref: '#/components/messages/ShippingLabelGenerated'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Shipment ID
+
+  shipment.dispatched:
+    description: Published when shipment is dispatched
+    publish:
+      operationId: publishShipmentDispatched
+      summary: Shipment dispatched event
+      message:
+        $ref: '#/components/messages/ShipmentDispatched'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Shipment ID
+
+  pick.session.completed:
+    description: Subscribe to pick session completion events
+    subscribe:
+      operationId: onPickSessionCompleted
+      summary: Handle completed pick sessions and initiate packing
+      message:
+        $ref: '#/components/messages/PickSessionCompleted'
+
+  task.assigned:
+    description: Subscribe to pack task assignments
+    subscribe:
+      operationId: onTaskAssigned
+      summary: Handle pack task assignments
+      message:
+        $ref: '#/components/messages/TaskAssigned'
+
+  order.updated:
+    description: Subscribe to order update events
+    subscribe:
+      operationId: onOrderUpdated
+      summary: Handle order updates that may affect packing
+      message:
+        $ref: '#/components/messages/OrderUpdated'
+
+components:
+  messages:
+    PackingSessionStarted:
+      name: PackingSessionStarted
+      title: Packing Session Started Event
+      summary: Emitted when a packing session begins
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PackingSessionStartedPayload'
+
+    ItemScanned:
+      name: ItemScanned
+      title: Item Scanned Event
+      summary: Emitted when an item is scanned during packing
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ItemScannedPayload'
+
+    CartonSelected:
+      name: CartonSelected
+      title: Carton Selected Event
+      summary: Emitted when a carton is selected for packing
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/CartonSelectedPayload'
+
+    WeightVerified:
+      name: WeightVerified
+      title: Weight Verified Event
+      summary: Emitted when package weight is verified
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/WeightVerifiedPayload'
+
+    QualityCheckCompleted:
+      name: QualityCheckCompleted
+      title: Quality Check Completed Event
+      summary: Emitted when quality control check is completed
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/QualityCheckCompletedPayload'
+
+    PackingSessionCompleted:
+      name: PackingSessionCompleted
+      title: Packing Session Completed Event
+      summary: Emitted when packing session is successfully completed
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PackingSessionCompletedPayload'
+
+    PackingSessionFailed:
+      name: PackingSessionFailed
+      title: Packing Session Failed Event
+      summary: Emitted when packing session fails quality check
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PackingSessionFailedPayload'
+
+    ShipmentCreated:
+      name: ShipmentCreated
+      title: Shipment Created Event
+      summary: Emitted when a shipment is created
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ShipmentCreatedPayload'
+
+    ShippingLabelGenerated:
+      name: ShippingLabelGenerated
+      title: Shipping Label Generated Event
+      summary: Emitted when shipping label is generated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ShippingLabelGeneratedPayload'
+
+    ShipmentDispatched:
+      name: ShipmentDispatched
+      title: Shipment Dispatched Event
+      summary: Emitted when shipment is dispatched
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ShipmentDispatchedPayload'
+
+    PickSessionCompleted:
+      name: PickSessionCompleted
+      title: Pick Session Completed Event
+      summary: Received when a pick session is completed
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PickSessionCompletedPayload'
+
+    TaskAssigned:
+      name: TaskAssigned
+      title: Task Assigned Event
+      summary: Received when a pack task is assigned
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TaskAssignedPayload'
+
+    OrderUpdated:
+      name: OrderUpdated
+      title: Order Updated Event
+      summary: Received when an order is updated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/OrderUpdatedPayload'
+
+  schemas:
+    PackingSessionStartedPayload:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - packerId
+        - stationId
+        - startedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        packerId:
+          type: string
+        packerName:
+          type: string
+        stationId:
+          type: string
+        warehouseId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        totalItems:
+          type: integer
+        estimatedWeight:
+          type: number
+
+    ItemScannedPayload:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - productId
+        - barcode
+        - scannedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        productId:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        quantity:
+          type: integer
+        scannedAt:
+          type: string
+          format: date-time
+        scannedBy:
+          type: string
+        totalScanned:
+          type: integer
+        totalToScan:
+          type: integer
+        progressPercent:
+          type: number
+
+    CartonSelectedPayload:
+      type: object
+      required:
+        - sessionId
+        - cartonId
+        - selectedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        cartonId:
+          type: string
+        cartonType:
+          type: string
+        dimensions:
+          type: object
+          properties:
+            length:
+              type: number
+            width:
+              type: number
+            height:
+              type: number
+        autoSelected:
+          type: boolean
+        selectionMethod:
+          type: string
+          enum: [MANUAL, ALGORITHM_3D_BIN_PACKING, RECOMMENDED]
+        utilization:
+          type: number
+          format: percentage
+        selectedAt:
+          type: string
+          format: date-time
+
+    WeightVerifiedPayload:
+      type: object
+      required:
+        - sessionId
+        - expectedWeight
+        - actualWeight
+        - withinTolerance
+        - verifiedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        expectedWeight:
+          type: number
+        actualWeight:
+          type: number
+        variance:
+          type: number
+        variancePercent:
+          type: number
+        withinTolerance:
+          type: boolean
+        toleranceThreshold:
+          type: number
+        scaleId:
+          type: string
+        verifiedAt:
+          type: string
+          format: date-time
+        verifiedBy:
+          type: string
+
+    QualityCheckCompletedPayload:
+      type: object
+      required:
+        - sessionId
+        - checkId
+        - passed
+        - performedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        checkId:
+          type: string
+        passed:
+          type: boolean
+        performedAt:
+          type: string
+          format: date-time
+        performedBy:
+          type: string
+        checkpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              checkpoint:
+                type: string
+                enum: [CORRECT_ITEMS, UNDAMAGED, PROPERLY_PACKED, LABEL_CORRECT, WEIGHT_OK]
+              passed:
+                type: boolean
+              notes:
+                type: string
+        overallScore:
+          type: number
+          format: percentage
+        issuesFound:
+          type: array
+          items:
+            type: string
+        actionRequired:
+          type: string
+          enum: [NONE, REPACK, INVESTIGATE, SUPERVISOR_REVIEW]
+
+    PackingSessionCompletedPayload:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - completedAt
+        - duration
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        packerId:
+          type: string
+        warehouseId:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Duration in minutes
+        totalItems:
+          type: integer
+        cartonId:
+          type: string
+        finalWeight:
+          type: number
+        qualityCheckPassed:
+          type: boolean
+        packingMaterials:
+          type: array
+          items:
+            type: object
+            properties:
+              materialType:
+                type: string
+              quantity:
+                type: integer
+        shipmentId:
+          type: string
+          description: Associated shipment ID
+
+    PackingSessionFailedPayload:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - reason
+        - failedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        packerId:
+          type: string
+        reason:
+          type: string
+          enum: [QUALITY_CHECK_FAILED, WEIGHT_MISMATCH, DAMAGED_ITEMS, WRONG_ITEMS, OTHER]
+        reasonDetails:
+          type: string
+        failedAt:
+          type: string
+          format: date-time
+        requiresRepack:
+          type: boolean
+        requiresSupervisorReview:
+          type: boolean
+
+    ShipmentCreatedPayload:
+      type: object
+      required:
+        - shipmentId
+        - orderId
+        - carrier
+        - shippingMethod
+        - createdAt
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        sessionId:
+          type: string
+        carrier:
+          type: string
+          enum: [USPS, UPS, FEDEX, DHL, OTHER]
+        shippingMethod:
+          type: string
+        serviceLevel:
+          type: string
+          enum: [STANDARD, EXPRESS, OVERNIGHT, TWO_DAY]
+        weight:
+          type: number
+        dimensions:
+          type: object
+          properties:
+            length:
+              type: number
+            width:
+              type: number
+            height:
+              type: number
+        shippingAddress:
+          type: object
+          properties:
+            name:
+              type: string
+            street1:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            postalCode:
+              type: string
+            country:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        estimatedDelivery:
+          type: string
+          format: date-time
+
+    ShippingLabelGeneratedPayload:
+      type: object
+      required:
+        - shipmentId
+        - trackingNumber
+        - carrier
+        - generatedAt
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        labelId:
+          type: string
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        labelFormat:
+          type: string
+          enum: [ZPL, PDF, PNG]
+        labelUrl:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        generatedBy:
+          type: string
+        printerId:
+          type: string
+          description: Printer ID if automatically printed
+
+    ShipmentDispatchedPayload:
+      type: object
+      required:
+        - shipmentId
+        - trackingNumber
+        - dispatchedAt
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        dispatchedAt:
+          type: string
+          format: date-time
+        dispatchedBy:
+          type: string
+        truckId:
+          type: string
+        driverId:
+          type: string
+        manifestId:
+          type: string
+        estimatedDelivery:
+          type: string
+          format: date-time
+
+    PickSessionCompletedPayload:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - completedAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        pickerId:
+          type: string
+        warehouseId:
+          type: string
+        completedAt:
+          type: string
+          format: date-time
+        totalItems:
+          type: integer
+        shortPicks:
+          type: integer
+        destinationLocation:
+          type: string
+          description: Where picked items are staged
+
+    TaskAssignedPayload:
+      type: object
+      required:
+        - taskId
+        - taskType
+        - workerId
+        - assignedAt
+      properties:
+        taskId:
+          type: string
+        taskType:
+          type: string
+        workerId:
+          type: string
+        orderId:
+          type: string
+        warehouseId:
+          type: string
+        stationId:
+          type: string
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, URGENT]
+        assignedAt:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+
+    OrderUpdatedPayload:
+      type: object
+      required:
+        - orderId
+        - updateType
+        - updatedAt
+      properties:
+        orderId:
+          type: string
+        updateType:
+          type: string
+          enum: [SHIPPING_METHOD_CHANGED, ADDRESS_CHANGED, ITEMS_MODIFIED, CANCELLED]
+        updatedAt:
+          type: string
+          format: date-time
+        changes:
+          type: object
+          additionalProperties: true
+        requiresRepack:
+          type: boolean

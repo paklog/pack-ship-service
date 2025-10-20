@@ -1,0 +1,1273 @@
+openapi: 3.0.3
+info:
+  title: Pack and Ship Service API
+  description: |
+    The Pack and Ship Service manages packing station operations, quality control, and shipping preparation.
+    It handles packing session management, item scanning and verification, carton selection using 3D bin packing
+    algorithms, weight verification, quality checks, and shipping label generation. The service ensures accurate
+    and efficient order packing with quality control checkpoints.
+  version: 1.0.0
+  contact:
+    name: WES Team
+    email: wes-team@paklog.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: http://localhost:8084
+    description: Local development
+  - url: https://pack-ship.paklog.com
+    description: Production
+
+tags:
+  - name: Packing Sessions
+    description: Packing session management
+  - name: Scanning
+    description: Item scanning and verification
+  - name: Cartons
+    description: Carton selection and management
+  - name: Quality Control
+    description: Quality check operations
+  - name: Shipments
+    description: Shipment creation and management
+  - name: Labels
+    description: Shipping label generation
+  - name: Monitoring
+    description: Packing performance monitoring
+
+paths:
+  /packing-sessions:
+    get:
+      tags:
+        - Packing Sessions
+      summary: List packing sessions
+      description: Retrieve list of packing sessions with filtering
+      operationId: listPackingSessions
+      parameters:
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/PackingStatus'
+        - $ref: '#/components/parameters/PackerId'
+        - $ref: '#/components/parameters/StationId'
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: List of packing sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PackingSession'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    post:
+      tags:
+        - Packing Sessions
+      summary: Start packing session
+      description: Start a new packing session for an order
+      operationId: startPackingSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartPackingRequest'
+            example:
+              orderId: ORDER-12345
+              packerId: PACKER-001
+              stationId: PACK-STN-05
+              warehouseId: WH-001
+      responses:
+        '201':
+          description: Packing session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackingSessionDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /packing-sessions/{sessionId}:
+    get:
+      tags:
+        - Packing Sessions
+      summary: Get packing session
+      description: Retrieve detailed information about a packing session
+      operationId: getPackingSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Packing session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackingSessionDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Packing Sessions
+      summary: Cancel packing session
+      description: Cancel a packing session
+      operationId: cancelPackingSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: reason
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session cancelled successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /packing-sessions/{sessionId}/scan:
+    post:
+      tags:
+        - Scanning
+      summary: Scan item
+      description: Scan and verify an item for packing
+      operationId: scanItem
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanItemRequest'
+      responses:
+        '200':
+          description: Item scanned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Item validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [UNEXPECTED_ITEM, ALREADY_SCANNED, WRONG_QUANTITY]
+                  message:
+                    type: string
+                  expectedItem:
+                    type: object
+
+  /packing-sessions/{sessionId}/items:
+    get:
+      tags:
+        - Scanning
+      summary: Get items to pack
+      description: Get list of items to pack in this session
+      operationId: getItemsToPack
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Items to pack
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemToPack'
+                  scannedItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScannedItem'
+
+  /packing-sessions/{sessionId}/select-carton:
+    post:
+      tags:
+        - Cartons
+      summary: Select carton
+      description: Select a carton for packing (manual or auto-selected)
+      operationId: selectCarton
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectCartonRequest'
+      responses:
+        '200':
+          description: Carton selected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartonSelection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /packing-sessions/{sessionId}/recommend-carton:
+    get:
+      tags:
+        - Cartons
+      summary: Recommend carton
+      description: Get carton recommendation using 3D bin packing algorithm
+      operationId: recommendCarton
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Carton recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CartonRecommendation'
+
+  /packing-sessions/{sessionId}/weigh:
+    post:
+      tags:
+        - Quality Control
+      summary: Weigh package
+      description: Record package weight and verify against expected
+      operationId: weighPackage
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WeighPackageRequest'
+      responses:
+        '200':
+          description: Weight recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightVerification'
+        '400':
+          description: Weight discrepancy detected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  expectedWeight:
+                    type: number
+                  actualWeight:
+                    type: number
+                  variance:
+                    type: number
+                  requiresRepack:
+                    type: boolean
+
+  /packing-sessions/{sessionId}/quality-check:
+    post:
+      tags:
+        - Quality Control
+      summary: Perform quality check
+      description: Perform quality control check on packed order
+      operationId: performQualityCheck
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QualityCheckRequest'
+      responses:
+        '200':
+          description: Quality check completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityCheckResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /packing-sessions/{sessionId}/complete:
+    post:
+      tags:
+        - Packing Sessions
+      summary: Complete packing session
+      description: Mark packing session as complete and ready for shipping
+      operationId: completePackingSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                packingMaterials:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      materialType:
+                        type: string
+                      quantity:
+                        type: integer
+      responses:
+        '200':
+          description: Session completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackingSessionDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /shipments:
+    get:
+      tags:
+        - Shipments
+      summary: List shipments
+      description: Get list of shipments
+      operationId: listShipments
+      parameters:
+        - $ref: '#/components/parameters/WarehouseId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [CREATED, LABELED, READY, DISPATCHED, IN_TRANSIT, DELIVERED]
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: List of shipments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shipments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Shipment'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      tags:
+        - Shipments
+      summary: Create shipment
+      description: Create a shipment from completed packing session
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShipmentRequest'
+      responses:
+        '201':
+          description: Shipment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShipmentDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /shipments/{shipmentId}:
+    get:
+      tags:
+        - Shipments
+      summary: Get shipment
+      description: Get shipment details
+      operationId: getShipment
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shipment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShipmentDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{shipmentId}/label:
+    post:
+      tags:
+        - Labels
+      summary: Generate shipping label
+      description: Generate shipping label for shipment
+      operationId: generateShippingLabel
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                labelFormat:
+                  type: string
+                  enum: [ZPL, PDF, PNG]
+                  default: ZPL
+                printer:
+                  type: string
+                  description: Printer ID for direct printing
+      responses:
+        '200':
+          description: Label generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShippingLabel'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    get:
+      tags:
+        - Labels
+      summary: Get shipping label
+      description: Retrieve generated shipping label
+      operationId: getShippingLabel
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [ZPL, PDF, PNG]
+            default: PDF
+      responses:
+        '200':
+          description: Shipping label
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            text/plain:
+              schema:
+                type: string
+                description: ZPL format label
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /shipments/{shipmentId}/manifest:
+    get:
+      tags:
+        - Shipments
+      summary: Get packing manifest
+      description: Get detailed packing manifest
+      operationId: getPackingManifest
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Packing manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackingManifest'
+
+  /shipments/{shipmentId}/dispatch:
+    post:
+      tags:
+        - Shipments
+      summary: Dispatch shipment
+      description: Mark shipment as dispatched
+      operationId: dispatchShipment
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dispatchedBy:
+                  type: string
+                truckId:
+                  type: string
+                driverId:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Shipment dispatched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShipmentDetails'
+
+  /cartons:
+    get:
+      tags:
+        - Cartons
+      summary: List available cartons
+      description: Get list of available carton types
+      operationId: listCartons
+      parameters:
+        - $ref: '#/components/parameters/WarehouseId'
+      responses:
+        '200':
+          description: Available cartons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CartonType'
+
+  /metrics/packer/{packerId}:
+    get:
+      tags:
+        - Monitoring
+      summary: Get packer metrics
+      description: Get productivity metrics for a packer
+      operationId: getPackerMetrics
+      parameters:
+        - name: packerId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Packer metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackerMetrics'
+
+  /metrics/quality:
+    get:
+      tags:
+        - Monitoring
+      summary: Get quality metrics
+      description: Get quality control metrics
+      operationId: getQualityMetrics
+      parameters:
+        - $ref: '#/components/parameters/WarehouseId'
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Quality metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityMetrics'
+
+components:
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+
+    WarehouseId:
+      name: warehouseId
+      in: query
+      schema:
+        type: string
+
+    PackingStatus:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/PackingStatus'
+
+    PackerId:
+      name: packerId
+      in: query
+      schema:
+        type: string
+
+    StationId:
+      name: stationId
+      in: query
+      schema:
+        type: string
+
+    DateFrom:
+      name: dateFrom
+      in: query
+      schema:
+        type: string
+        format: date-time
+
+    DateTo:
+      name: dateTo
+      in: query
+      schema:
+        type: string
+        format: date-time
+
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 0
+
+    PageSize:
+      name: size
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+
+  schemas:
+    PackingSession:
+      type: object
+      required:
+        - sessionId
+        - orderId
+        - packerId
+        - stationId
+        - status
+        - createdAt
+      properties:
+        sessionId:
+          type: string
+        orderId:
+          type: string
+        packerId:
+          type: string
+        packerName:
+          type: string
+        stationId:
+          type: string
+        warehouseId:
+          type: string
+        status:
+          $ref: '#/components/schemas/PackingStatus'
+        totalItems:
+          type: integer
+        scannedItems:
+          type: integer
+        cartonId:
+          type: string
+        weight:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    PackingSessionDetails:
+      allOf:
+        - $ref: '#/components/schemas/PackingSession'
+        - type: object
+          properties:
+            itemsToPack:
+              type: array
+              items:
+                $ref: '#/components/schemas/ItemToPack'
+            scannedItemsList:
+              type: array
+              items:
+                $ref: '#/components/schemas/ScannedItem'
+            carton:
+              $ref: '#/components/schemas/CartonType'
+            qualityChecks:
+              type: array
+              items:
+                $ref: '#/components/schemas/QualityCheckResult'
+            shipmentId:
+              type: string
+
+    PackingStatus:
+      type: string
+      enum:
+        - STARTED
+        - SCANNING
+        - CARTON_SELECTED
+        - WEIGHING
+        - QUALITY_CHECK
+        - COMPLETED
+        - FAILED
+        - CANCELLED
+
+    StartPackingRequest:
+      type: object
+      required:
+        - orderId
+        - packerId
+        - stationId
+        - warehouseId
+      properties:
+        orderId:
+          type: string
+        packerId:
+          type: string
+        stationId:
+          type: string
+        warehouseId:
+          type: string
+
+    ItemToPack:
+      type: object
+      properties:
+        itemId:
+          type: string
+        productId:
+          type: string
+        sku:
+          type: string
+        productName:
+          type: string
+        quantity:
+          type: integer
+        barcode:
+          type: string
+        weight:
+          type: number
+        dimensions:
+          $ref: '#/components/schemas/Dimensions'
+        isFragile:
+          type: boolean
+        requiresSpecialHandling:
+          type: boolean
+
+    ScannedItem:
+      type: object
+      properties:
+        itemId:
+          type: string
+        productId:
+          type: string
+        sku:
+          type: string
+        barcode:
+          type: string
+        scannedAt:
+          type: string
+          format: date-time
+        scannedBy:
+          type: string
+        quantity:
+          type: integer
+
+    ScanItemRequest:
+      type: object
+      required:
+        - barcode
+      properties:
+        barcode:
+          type: string
+        quantity:
+          type: integer
+          default: 1
+
+    ScanResult:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+        scannedItem:
+          $ref: '#/components/schemas/ScannedItem'
+        remainingItems:
+          type: integer
+        nextAction:
+          type: string
+          enum: [CONTINUE_SCANNING, SELECT_CARTON, WEIGH_PACKAGE, QUALITY_CHECK, COMPLETE]
+
+    SelectCartonRequest:
+      type: object
+      properties:
+        cartonId:
+          type: string
+          description: Specific carton ID (manual selection)
+        autoSelect:
+          type: boolean
+          default: false
+          description: Use 3D bin packing algorithm
+
+    CartonType:
+      type: object
+      properties:
+        cartonId:
+          type: string
+        name:
+          type: string
+        dimensions:
+          $ref: '#/components/schemas/Dimensions'
+        maxWeight:
+          type: number
+        tareWeight:
+          type: number
+        material:
+          type: string
+        cost:
+          type: number
+
+    Dimensions:
+      type: object
+      properties:
+        length:
+          type: number
+          description: Length in centimeters
+        width:
+          type: number
+          description: Width in centimeters
+        height:
+          type: number
+          description: Height in centimeters
+        volume:
+          type: number
+          description: Volume in cubic centimeters
+
+    CartonSelection:
+      type: object
+      properties:
+        carton:
+          $ref: '#/components/schemas/CartonType'
+        packingInstructions:
+          type: array
+          items:
+            type: string
+        estimatedUtilization:
+          type: number
+          format: percentage
+
+    CartonRecommendation:
+      type: object
+      properties:
+        carton:
+          $ref: '#/components/schemas/CartonType'
+        score:
+          type: number
+          description: Recommendation score (0-100)
+        utilization:
+          type: number
+          format: percentage
+        packingPlan:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId:
+                type: string
+              position:
+                type: object
+                properties:
+                  x:
+                    type: number
+                  y:
+                    type: number
+                  z:
+                    type: number
+              orientation:
+                type: string
+
+    WeighPackageRequest:
+      type: object
+      required:
+        - weight
+      properties:
+        weight:
+          type: number
+          description: Actual weight in kilograms
+        scaleId:
+          type: string
+
+    WeightVerification:
+      type: object
+      properties:
+        expectedWeight:
+          type: number
+        actualWeight:
+          type: number
+        variance:
+          type: number
+        withinTolerance:
+          type: boolean
+        tolerancePercent:
+          type: number
+          default: 5.0
+
+    QualityCheckRequest:
+      type: object
+      required:
+        - passed
+      properties:
+        passed:
+          type: boolean
+        checkpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              checkpoint:
+                type: string
+                enum: [CORRECT_ITEMS, UNDAMAGED, PROPERLY_PACKED, LABEL_CORRECT, WEIGHT_OK]
+              passed:
+                type: boolean
+              notes:
+                type: string
+        inspector:
+          type: string
+        notes:
+          type: string
+
+    QualityCheckResult:
+      type: object
+      properties:
+        checkId:
+          type: string
+        passed:
+          type: boolean
+        performedAt:
+          type: string
+          format: date-time
+        performedBy:
+          type: string
+        checkpoints:
+          type: array
+          items:
+            type: object
+        notes:
+          type: string
+        actionRequired:
+          type: string
+
+    Shipment:
+      type: object
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        shippingMethod:
+          type: string
+        status:
+          type: string
+          enum: [CREATED, LABELED, READY, DISPATCHED, IN_TRANSIT, DELIVERED]
+        weight:
+          type: number
+        dimensions:
+          $ref: '#/components/schemas/Dimensions'
+        createdAt:
+          type: string
+          format: date-time
+        dispatchedAt:
+          type: string
+          format: date-time
+
+    ShipmentDetails:
+      allOf:
+        - $ref: '#/components/schemas/Shipment'
+        - type: object
+          properties:
+            containers:
+              type: array
+              items:
+                $ref: '#/components/schemas/Container'
+            shippingAddress:
+              $ref: '#/components/schemas/Address'
+            billingAddress:
+              $ref: '#/components/schemas/Address'
+            label:
+              $ref: '#/components/schemas/ShippingLabel'
+
+    Container:
+      type: object
+      properties:
+        containerId:
+          type: string
+        cartonType:
+          $ref: '#/components/schemas/CartonType'
+        weight:
+          type: number
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+              sku:
+                type: string
+              quantity:
+                type: integer
+
+    CreateShipmentRequest:
+      type: object
+      required:
+        - sessionId
+        - carrier
+        - shippingMethod
+      properties:
+        sessionId:
+          type: string
+        carrier:
+          type: string
+          enum: [USPS, UPS, FEDEX, DHL, OTHER]
+        shippingMethod:
+          type: string
+        serviceLevel:
+          type: string
+          enum: [STANDARD, EXPRESS, OVERNIGHT, TWO_DAY]
+        shippingAddress:
+          $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      properties:
+        name:
+          type: string
+        company:
+          type: string
+        street1:
+          type: string
+        street2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+        phone:
+          type: string
+
+    ShippingLabel:
+      type: object
+      properties:
+        labelId:
+          type: string
+        trackingNumber:
+          type: string
+        carrier:
+          type: string
+        format:
+          type: string
+          enum: [ZPL, PDF, PNG]
+        content:
+          type: string
+          description: Base64 encoded label content
+        generatedAt:
+          type: string
+          format: date-time
+
+    PackingManifest:
+      type: object
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        packedBy:
+          type: string
+        packedAt:
+          type: string
+          format: date-time
+        totalItems:
+          type: integer
+        totalWeight:
+          type: number
+        containers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Container'
+        qualityChecks:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityCheckResult'
+
+    PackerMetrics:
+      type: object
+      properties:
+        packerId:
+          type: string
+        totalSessions:
+          type: integer
+        completedSessions:
+          type: integer
+        totalOrders:
+          type: integer
+        totalItems:
+          type: integer
+        avgItemsPerHour:
+          type: number
+        avgOrdersPerHour:
+          type: number
+        avgPackingTime:
+          type: number
+          description: Average packing time in minutes
+        qualityScore:
+          type: number
+          format: percentage
+        errorRate:
+          type: number
+          format: percentage
+
+    QualityMetrics:
+      type: object
+      properties:
+        totalChecks:
+          type: integer
+        passedChecks:
+          type: integer
+        failedChecks:
+          type: integer
+        passRate:
+          type: number
+          format: percentage
+        commonIssues:
+          type: array
+          items:
+            type: object
+            properties:
+              issue:
+                type: string
+              count:
+                type: integer
+        weightVarianceAvg:
+          type: number
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - bearerAuth: []
+  - apiKey: []
