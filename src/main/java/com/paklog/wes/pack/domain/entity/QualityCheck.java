@@ -100,6 +100,13 @@ public class QualityCheck {
     }
 
     /**
+     * Check if QC passed
+     */
+    public boolean isPassed() {
+        return passed;
+    }
+
+    /**
      * Check if QC failed
      */
     public boolean hasFailed() {
@@ -159,23 +166,5 @@ public class QualityCheck {
 
     public void setPerformedAt(LocalDateTime performedAt) {
         this.performedAt = performedAt;
-    }
-
-    public boolean isPassed() {
-        return passed;
-    }
-
-    public void setPassed(boolean passed) {
-        this.passed = passed;
-    }
-
-    @Override
-    public String toString() {
-        return "QualityCheck{" +
-                "checkerId='" + checkerId + '\'' +
-                ", passed=" + passed +
-                ", checkpoints=" + checkpoints.size() +
-                ", passRate=" + String.format("%.1f%%", getPassRate()) +
-                '}';
     }
 }

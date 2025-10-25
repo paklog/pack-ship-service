@@ -1,6 +1,6 @@
 package com.paklog.wes.pack.infrastructure.events;
 
-import com.paklog.wes.pack.application.service.PackingService;
+import com.paklog.wes.pack.application.service.PackingSessionService;
 import com.paklog.wes.pack.domain.aggregate.PackingSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,16 +13,17 @@ import java.util.Map;
 /**
  * Event handler for Picking events
  * Listens to picking-related events and creates packing sessions
+ * TODO: Adapt to use PackingSessionService with proper commands
  */
 @Component
 public class PickEventHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PickEventHandler.class);
 
-    private final PackingService packingService;
+    private final PackingSessionService packingSessionService;
 
-    public PickEventHandler(PackingService packingService) {
-        this.packingService = packingService;
+    public PickEventHandler(PackingSessionService packingSessionService) {
+        this.packingSessionService = packingSessionService;
     }
 
     /**
@@ -66,33 +67,9 @@ public class PickEventHandler {
 
     private void createPackingSession(String orderId, String warehouseId,
                                       String pickSessionId, List<Map<String, Object>> items) {
-        try {
-            // Create packing session
-            PackingSession session = packingService.createSession(
-                    orderId,
-                    warehouseId,
-                    pickSessionId,
-                    "system" // Created by event handler
-            );
-
-            // Add items to session
-            for (Map<String, Object> item : items) {
-                String sku = (String) item.get("sku");
-                Integer quantity = ((Number) item.get("quantity")).intValue();
-
-                packingService.addItemToScan(
-                        session.getSessionId(),
-                        sku,
-                        quantity
-                );
-            }
-
-            logger.debug("Created packing session {} for order {} with {} items",
-                    session.getSessionId(), orderId, items.size());
-
-        } catch (Exception e) {
-            logger.error("Error creating packing session for order {}", orderId, e);
-        }
+        // TODO: Implement using StartPackingSessionCommand
+        logger.warn("createPackingSession needs implementation with proper command pattern");
+        logger.debug("Would create packing session for order {} with {} items", orderId, items.size());
     }
 
     /**
@@ -130,6 +107,8 @@ public class PickEventHandler {
 
         } catch (Exception e) {
             logger.error("Error handling PickShortageEvent", e);
-        }
-    }
+        
+
+}
+}
 }
