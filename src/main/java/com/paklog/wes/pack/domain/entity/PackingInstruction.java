@@ -284,6 +284,8 @@ public class PackingInstruction {
                    status == InstructionStatus.MISSING ||
                    status == InstructionStatus.DAMAGED ||
                    status == InstructionStatus.CANCELLED;
-        }
-    }
+        
+
+}
+}
 }

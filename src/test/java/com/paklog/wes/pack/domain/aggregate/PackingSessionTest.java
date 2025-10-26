@@ -505,7 +505,9 @@ class PackingSessionTest {
         for (int i = 1; i <= session.getItemsToScan().size(); i++) {
             for (int j = 0; j < 10; j++) { // Expected quantity is 10
                 session.scanItem("BARCODE-" + i);
-            }
-        }
-    }
+            
+
+}
+}
+}
 }

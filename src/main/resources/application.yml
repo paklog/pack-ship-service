@@ -52,16 +52,16 @@ pack:
 # CloudEvents Configuration
 cloudevents:
   kafka:
-    topic: wes-pack-events
+    topic: warehouse-execution.pack-ship.events
     source: /wes/pack-ship-service
 
 # PakLog Configuration
 paklog:
   kafka:
     topics:
-      pick-events: wes-pick-events
-      pack-events: wes-pack-events
-      ship-events: wes-ship-events
+      pick-events: warehouse-execution.pick-execution.events
+      pack-events: warehouse-execution.pack-ship.events
+      ship-events: warehouse-execution.pack-ship.ship-events
     consumer:
       group-id: pack-ship-service
 
