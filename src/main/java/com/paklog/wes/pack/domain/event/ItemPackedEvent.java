@@ -1,6 +1,6 @@
 package com.paklog.wes.pack.domain.event;
 
-import com.paklog.domain.shared.DomainEvent;
+import com.paklog.wes.pack.domain.shared.DomainEvent;
 
 public class ItemPackedEvent extends DomainEvent {
     private final String sessionId;

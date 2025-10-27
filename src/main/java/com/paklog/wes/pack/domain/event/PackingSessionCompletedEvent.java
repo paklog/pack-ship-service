@@ -1,6 +1,6 @@
 package com.paklog.wes.pack.domain.event;
 
-import com.paklog.domain.shared.DomainEvent;
+import com.paklog.wes.pack.domain.shared.DomainEvent;
 import java.time.Duration;
 
 public class PackingSessionCompletedEvent extends DomainEvent {

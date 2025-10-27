@@ -1,6 +1,6 @@
 package com.paklog.wes.pack.domain.entity;
 
-import com.paklog.domain.valueobject.Priority;
+import com.paklog.wes.pack.domain.valueobject.Priority;
 import com.paklog.wes.pack.domain.valueobject.Dimensions;
 import com.paklog.wes.pack.domain.valueobject.Weight;
 
