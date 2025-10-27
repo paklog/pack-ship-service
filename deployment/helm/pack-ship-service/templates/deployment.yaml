@@ -1,0 +1,164 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pack-ship-service.fullname" . }}
+  namespace: {{ .Values.namespace | default "paklog" }}
+  labels:
+    {{- include "pack-ship-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "pack-ship-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "pack-ship-service.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "pack-ship-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+          protocol: TCP
+        {{- if .Values.service.managementPort }}
+        - name: management
+          containerPort: {{ .Values.service.managementPort }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.path }}
+            port: management
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.path }}
+            port: management
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            path: {{ .Values.startupProbe.path }}
+            port: management
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+        {{- end }}
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: {{ .Values.springProfile | default "prod" | quote }}
+        - name: JAVA_OPTS
+          value: {{ .Values.javaOpts | quote }}
+        {{- if and .Values.mongodb .Values.mongodb.enabled }}
+        - name: MONGODB_URI
+          value: {{ .Values.mongodb.uri | quote }}
+        {{- if .Values.mongodb.existingSecret }}
+        - name: MONGO_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.existingSecret }}
+              key: mongodb-username
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.mongodb.existingSecret }}
+              key: mongodb-password
+        {{- end }}
+        {{- end }}
+        {{- if and .Values.postgresql .Values.postgresql.enabled }}
+        - name: DATABASE_URL
+          value: {{ .Values.postgresql.url | quote }}
+        {{- if .Values.postgresql.existingSecret }}
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret }}
+              key: postgresql-username
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.postgresql.existingSecret }}
+              key: postgresql-password
+        {{- end }}
+        {{- end }}
+        {{- if and .Values.kafka .Values.kafka.enabled }}
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: {{ .Values.kafka.bootstrapServers | quote }}
+        {{- end }}
+        {{- if and .Values.redis .Values.redis.enabled }}
+        - name: REDIS_HOST
+          value: {{ .Values.redis.host | quote }}
+        - name: REDIS_PORT
+          value: {{ .Values.redis.port | quote }}
+        {{- if .Values.redis.existingSecret }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.redis.existingSecret }}
+              key: redis-password
+        {{- end }}
+        {{- end }}
+        {{- if and .Values.observability .Values.observability.enabled }}
+        - name: MANAGEMENT_OTLP_TRACING_ENDPOINT
+          value: {{ .Values.observability.otlp.endpoint | quote }}
+        {{- if and .Values.observability.loki .Values.observability.loki.enabled }}
+        - name: MANAGEMENT_LOKI_URL
+          value: {{ .Values.observability.loki.url | quote }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.extraEnv }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30

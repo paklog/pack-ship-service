@@ -1,6 +1,6 @@
 package com.paklog.wes.pack.domain.aggregate;
 
-import com.paklog.domain.valueobject.Priority;
+import com.paklog.wes.pack.domain.valueobject.Priority;
 import com.paklog.wes.pack.domain.entity.Container;
 import com.paklog.wes.pack.domain.entity.PackingInstruction;
 import com.paklog.wes.pack.domain.valueobject.*;

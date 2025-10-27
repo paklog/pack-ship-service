@@ -1,0 +1,51 @@
+# Maven build artifacts
+target/
+!target/*.jar
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+.jacoco/
+coverage/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml

@@ -1,7 +1,7 @@
 package com.paklog.wes.pack.domain.aggregate;
 
-import com.paklog.domain.annotation.AggregateRoot;
-import com.paklog.domain.shared.DomainEvent;
+import com.paklog.wes.pack.domain.shared.AggregateRoot;
+import com.paklog.wes.pack.domain.shared.DomainEvent;
 import com.paklog.wes.pack.domain.entity.ShippingLabel;
 import com.paklog.wes.pack.domain.event.ShipmentCreatedEvent;
 import com.paklog.wes.pack.domain.event.ShipmentDispatchedEvent;
